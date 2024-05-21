@@ -4,21 +4,67 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/williammartin/gh-workwork/remotedata"
+	"github.com/williammartin/gh-workwork/slices"
 )
 
 type Item struct {
-	Name string
+	id   uint
+	repo string
+	name string
+}
+
+// implement the list.Item interface.
+func (i Item) FilterValue() string {
+	return i.name
+}
+
+func (i Item) Title() string {
+	return fmt.Sprintf("%s #%d", i.repo, i.id)
+}
+
+func (i Item) Description() string {
+	return i.name
 }
 
 type Column struct {
 	Name  string
 	Items []Item
+
+	List list.Model
+}
+
+func (c Column) View() string {
+	// TODO: I think bubbletea kind of expects messages to be sent to nested models, so
+	// for example, list would be a field on Column. For the moment I'll just construct
+	// the list each time though.
+
+	// TODO: handle window resizing
+	list := list.New(
+		slices.Map(c.Items, func(i Item) list.Item { return i }),
+		list.NewDefaultDelegate(), 500, 5)
+	list.Title = c.Name
+	list.SetShowHelp(false)
+
+	return lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		Render(list.View())
 }
 
 type Board struct {
 	Columns []Column
+}
+
+func (b Board) View() string {
+	return lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		slices.Map(b.Columns, Column.View)...,
+	)
 }
 
 func loadBoard() tea.Msg {
@@ -35,25 +81,25 @@ func loadBoard() tea.Msg {
 				{
 					Name: "Prioritised",
 					Items: []Item{
-						{Name: "Foo"},
+						{id: 354, repo: "cli", name: "GitHub Project Experiment"},
+						{id: 339, repo: "cli", name: "Assess GitHub CLI primer design for screen reader accessibility"},
 					},
 				},
 				{
 					Name: "In Progress",
 					Items: []Item{
-						{Name: "Bar"},
+						{id: 393, repo: "cli", name: "Initial FAQ Documentation"},
 					},
 				},
 				{
 					Name: "Done",
 					Items: []Item{
-						{Name: "Baz"},
+						{id: 402, repo: "cli", name: "Document proposed retrospective experiment"},
 					},
 				},
 			},
 		},
 	}
-
 }
 
 type loadBoardResult struct {
@@ -87,7 +133,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case loadBoardResult:
 		if msg.Err != nil {
 			return Model{
-				State: remotedata.Failure{Error: msg.Err},
+				State: remotedata.Failure{Err: msg.Err},
 			}, nil
 		}
 
@@ -100,18 +146,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	s, _ := remotedata.Match(m.State,
-		func(remotedata.NotAsked) (string, error) {
-			return "Not asked", nil
+	s := remotedata.Match(m.State,
+		func(remotedata.NotAsked) string {
+			return ""
 		},
-		func(remotedata.Loading) (string, error) {
-			return "Loading", nil
+		func(remotedata.Loading) string {
+			return "Loading..."
 		},
-		func(f remotedata.Failure) (string, error) {
-			return fmt.Sprintf("Failed: %v", f.Error), nil
+		func(f remotedata.Failure) string {
+			return fmt.Sprintf("Uh oh ya done goofed because: %v", f.Err)
 		},
-		func(s remotedata.Success[Board]) (string, error) {
-			return fmt.Sprintf("Success: %v", s.Data), nil
+		func(s remotedata.Success[Board]) string {
+			return s.Data.View()
 		},
 	)
 
