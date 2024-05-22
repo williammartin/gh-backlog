@@ -1,4 +1,4 @@
-package workwork
+package backlog
 
 import (
 	"fmt"
@@ -8,10 +8,10 @@ import (
 	"github.com/cli/cli/v2/pkg/cmd/project/shared/queries"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	ghAPI "github.com/cli/go-gh/v2/pkg/api"
-	"github.com/williammartin/gh-workwork/list"
-	"github.com/williammartin/gh-workwork/maps"
-	"github.com/williammartin/gh-workwork/remotedata"
-	"github.com/williammartin/gh-workwork/slices"
+	"github.com/williammartin/gh-backlog/list"
+	"github.com/williammartin/gh-backlog/maps"
+	"github.com/williammartin/gh-backlog/remotedata"
+	"github.com/williammartin/gh-backlog/slices"
 )
 
 type Item struct {
@@ -56,7 +56,6 @@ func viewColumn(c Column, width int) string {
 		Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("62")).
-		Width(width).
 		Render(lipgloss.JoinVertical(
 			lipgloss.Left,
 			title.Render(c.Name),
@@ -74,7 +73,7 @@ func viewBoard(b Board, width int) string {
 		Render(lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			slices.Map(b.Columns, func(c Column) string {
-				return viewColumn(c, width/len(b.Columns))
+				return viewColumn(c, width/(len(b.Columns)+1))
 			})...,
 		))
 }
@@ -149,7 +148,7 @@ func loadBoard(owner string, projectNumber int32) tea.Cmd {
 	}
 }
 
-// lol wow this is a terrible sorting function
+// lol wow this is a terrible sorting function.
 func byStatus(i, j Column) int {
 	if i.Name == "Prioritized" {
 		return -1
@@ -197,10 +196,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		return Model{
-			Board: m.Board,
-			Width: msg.Width,
-		}, nil
+		m.Width = msg.Width
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -209,21 +206,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case loadBoardResult:
 		if msg.Err != nil {
-			return Model{
-				Board: remotedata.Failure{Err: msg.Err},
-			}, nil
+			m.Board = remotedata.Failure{Err: msg.Err}
+			return m, nil
 		}
 
-		return Model{
-			Board: remotedata.Success[Board]{Data: msg.Board},
-		}, nil
+		m.Board = remotedata.Success[Board]{Data: msg.Board}
+		return m, nil
 	}
 
 	return m, nil
 }
 
 func (m Model) View() string {
-	s := remotedata.Match(m.Board,
+	return remotedata.Match(m.Board,
 		func(remotedata.NotAsked) string {
 			return ""
 		},
@@ -237,6 +232,4 @@ func (m Model) View() string {
 			return viewBoard(s.Data, m.Width)
 		},
 	)
-
-	return s
 }

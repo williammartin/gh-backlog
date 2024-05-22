@@ -1,4 +1,4 @@
-module github.com/williammartin/gh-workwork
+module github.com/williammartin/gh-backlog
 
 go 1.22.2
 

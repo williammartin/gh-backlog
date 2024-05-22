@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
-	workwork "github.com/williammartin/gh-workwork"
+	backlog "github.com/williammartin/gh-backlog"
 )
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: workwork <owner> <project number>")
+		fmt.Fprintln(os.Stderr, "usage: backlog <owner> <project number>")
 		os.Exit(1)
 	}
 
@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(workwork.InitialModel(owner, int32(projectNumber)))
+	p := tea.NewProgram(backlog.InitialModel(owner, int32(projectNumber)))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v", err)
 		os.Exit(1)
