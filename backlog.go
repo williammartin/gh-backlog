@@ -108,6 +108,10 @@ func loadBoard(owner string, projectNumber int32) tea.Cmd {
 			}
 		}
 
+		// TODO: All of this should probably be replaced by a request for
+		// https://docs.github.com/en/graphql/reference/objects#projectv2view so the server handles everything
+		// for us, but this was just a quick POC with the existing CLI code.
+
 		// Ok now let's group each item into columns
 		buckets := map[string]Column{}
 
